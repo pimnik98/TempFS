@@ -1,0 +1,40 @@
+# depslib dependency file v1.0
+1706196470 source:e:\codeblocks\tempfs\main.c
+	"port.h"
+
+1706196459 e:\codeblocks\tempfs\port.h
+	<stdio.h>
+	<stdlib.h>
+	<string.h>
+	"ext/pathinfo.h"
+	"ext/my_string.h"
+	"emu/disk.h"
+	"emu/fsm.h"
+	"tempfs.h"
+
+1705863822 e:\codeblocks\tempfs\emu\disk.h
+
+1706194259 e:\codeblocks\tempfs\tempfs.h
+	<stdint.h>
+
+1706196404 source:e:\codeblocks\tempfs\tempfs.c
+	"port.h"
+
+1705864197 source:e:\codeblocks\tempfs\emu\disk.c
+	"../port.h"
+
+1705856930 e:\codeblocks\tempfs\emu\fsm.h
+	<stdint.h>
+
+1705860703 e:\codeblocks\tempfs\ext\pathinfo.h
+	<stdint.h>
+
+1705864050 e:\codeblocks\tempfs\ext\my_string.h
+	<stdint.h>
+
+1705864037 source:e:\codeblocks\tempfs\ext\my_string.c
+	"../port.h"
+
+1705930097 source:e:\codeblocks\tempfs\ext\pathinfo.c
+	"../port.h"
+
