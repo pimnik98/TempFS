@@ -2,11 +2,122 @@
 
 FSM_DIR* Cache = {0};
 
+TEMPFS_Cache* __TCache__ = {0}; /// Кэш файловой системы
+// Часть функционала будет переписана для работы именно с этим кэшем
+// Если есть желание поддерживать несколько смонтированных файловых систем
+// Тогда рекомендуется,сделать поддержку это внутри вашей ОС
+// К примеру, в драйвере разделов, есть специальная позиция
+// где можно оставить именно ссылку на этот кэш и после на него ссылаться
+// просто в нужных местах замените переменную __TCache__ на необходимую
+
+
+/**
+ * @brief Функция для проверка подписи
+ */
+int fs_tempfs_func_checkSign(uint16_t sign1, uint16_t sign2){
+    return (sign1 + sign2 == 0x975f?1:0);                                   /// Проверяем подпись на основе сумме значений
+}
+
+int fs_tempfs_tcache_update(const char Disk){
+    tfs_log("[>] TCache update...\n");
+    if (__TCache__ == 0){
+        __TCache__ = malloc(sizeof(TEMPFS_Cache));
+        if (__TCache__ == NULL){
+            return 1;
+        }
+    }
+    memset(__TCache__,  0, sizeof(TEMPFS_Cache));
+    if (__TCache__->Boot != 0){
+        tfs_log(" |--- Free boot (0x%x)...\n", __TCache__->Boot);
+        free(__TCache__->Boot);
+    }
+
+    if (__TCache__->Files != 0){
+        tfs_log(" |--- Free files (0x%x)...\n", __TCache__->Files);
+        for (uint32_t i = 0; i < __TCache__->CountFiles; i++) {
+            //free(__TCache__->Files[i]);
+        }
+        free(__TCache__->Files);
+    }
+    tfs_log(" |--- Malloc Boot...\n");
+    __TCache__->Boot = malloc(sizeof(TEMPFS_BOOT));
+    if (__TCache__->Boot == NULL){
+        return 1;
+    }
+    tfs_log(" |  |--- Addr Boot: 0x%x\n", __TCache__->Boot);
+    tfs_log(" |  |--- Zero Boot...\n");
+    memset(__TCache__->Boot, 0, sizeof(TEMPFS_BOOT));
+    tfs_log(" |  |--- Read Boot...\n");
+    int read = dpm_read(Disk, 0, sizeof(TEMPFS_BOOT), __TCache__->Boot);
+    if (read != sizeof(TEMPFS_BOOT)){
+        tfs_log(" |       |--- Read: %d\n", read);
+        return 2;
+    }
+
+    if (fs_tempfs_func_checkSign(__TCache__->Boot->Sign1, __TCache__->Boot->Sign2) != 1){
+        tfs_log(" |      |--- Error check signature\n");
+        return 3;
+    }
+
+    if (__TCache__->Boot->CountFiles > 0){
+        __TCache__->Files = malloc(sizeof(TEMPFS_ENTITY) * __TCache__->Boot->CountFiles);
+        if (__TCache__->Files == NULL){
+            return 1;
+        }
+        memset(__TCache__->Files, 0, sizeof(TEMPFS_ENTITY) * __TCache__->Boot->CountFiles);
+        size_t offset = 512;
+        size_t inx = 0;
+        tfs_log(" |--- [>] Enter while\n");
+        while(1){
+            if (inx + 1 > __TCache__->Boot->CountFiles) break;
+            tfs_log(" |     |--- [>] %d | %d\n", inx + 1, __TCache__->Boot->CountFiles);
+            int eread = dpm_read(Disk, offset, sizeof(TEMPFS_ENTITY), &__TCache__->Files[inx]);
+            tfs_log(" |     |     |--- [>] Disk read\n");
+            tfs_log(" |     |     |     |--- Offset: %d\n", offset);
+            tfs_log(" |     |     |     |--- Size: %d\n", sizeof(TEMPFS_ENTITY));
+            offset += sizeof(TEMPFS_ENTITY);                                                    /// Добавляем отступ для следующего поиска
+            if (eread != sizeof(TEMPFS_ENTITY)){                                                /// Проверка на кол-во прочитаных байт
+                tfs_log(" |      |    |--- Failed to load enough bytes for data.!\n");
+                break;                                                                              /// Выходим с цикла, так как не удалось загрузить достаточно байт для данных.
+            }
+            if (__TCache__->Files[inx].Status != TEMPFS_ENTITY_STATUS_READY){
+                tfs_log(" |           |--- No data.!\n");
+                continue;                                                                           /// Пропускаем блок информации, тк тут нет информации
+            }
+
+            tfs_log(" |     |     |--- [>] File info\n");
+            tfs_log(" |     |     |     |--- Name: %s\n", __TCache__->Files[inx].Name);
+            tfs_log(" |     |     |     |--- Path: %s\n", __TCache__->Files[inx].Path);
+            tfs_log(" |     |     |     |--- Size: %d\n", __TCache__->Files[inx].Size);
+            tfs_log(" |     |     |     |--- Type: %s\n", (__TCache__->Files[inx].Type == TEMPFS_ENTITY_TYPE_FOLDER?"Folder":"File"));
+            //tfs_log(" |     |     |     |--- Date: %s\n", Files[count].LastTime);
+            tfs_log(" |     |     |     |--- CHMOD: 0x%x\n", __TCache__->Files[inx].CHMOD);
+            tfs_log(" |     |     |--- Next!\n");
+            inx++;
+        }
+    }
+
+    return 0x7246;
+}
+
+
 void fs_tempfs_func_fixPackage(char* src, int count){
     for (int i = count; i < 9;i++){
 		src[i] = 0;
 	}
 }
+
+TEMPFS_PACKAGE* fs_tempfs_func_readPackage(const char Disk, size_t Address){
+    TEMPFS_PACKAGE* pack = malloc(sizeof(TEMPFS_PACKAGE));
+    if (pack == NULL){
+        return NULL;
+    }
+    memset(pack, 0, sizeof(TEMPFS_PACKAGE));
+
+    int read = dpm_read(Disk, Address, sizeof(TEMPFS_PACKAGE), pack);
+    return pack;
+}
+
 
 int fs_tempfs_func_writePackage(const char Disk, size_t Address, TEMPFS_PACKAGE* pack){
     int write = dpm_write(Disk, Address, sizeof(TEMPFS_PACKAGE), pack);
@@ -16,7 +127,7 @@ int fs_tempfs_func_writePackage(const char Disk, size_t Address, TEMPFS_PACKAGE*
 TEMPFS_PACKAGE* fs_tempfs_func_getPackage(const char Disk, size_t Address){
     TEMPFS_PACKAGE* pack = malloc(sizeof(TEMPFS_PACKAGE));
     memset(pack, 0, sizeof(TEMPFS_PACKAGE));
-    int read = dpm_read(Disk, Address, sizeof(TEMPFS_PACKAGE), pack);                         /// Загружаем данные с загрузочного раздела
+    int read = dpm_read(Disk, Address, sizeof(TEMPFS_PACKAGE), pack);                         /// Загружаем данные пакет с диска
     return pack;
 }
 
@@ -29,15 +140,15 @@ int fs_tempfs_func_getCountAllBlocks(size_t all_disk){
     return (all_blocks <= 0?0:all_blocks);                                              /// Возвращает кол-во блоков
 }
 
+TEMPFS_ENTITY* fs_tempfs_func_readEntity(const char Disk, char* Path){
+
+}
 
 int fs_tempfs_func_writeEntity(const char Disk, int Index, TEMPFS_ENTITY* entity){
     int write = dpm_write(Disk, 512 + (Index*sizeof(TEMPFS_ENTITY)), sizeof(TEMPFS_ENTITY), entity);
     return (write == sizeof(TEMPFS_ENTITY)?1:0);
 }
 
-int fs_tempfs_func_checkSign(uint16_t sign1, uint16_t sign2){
-    return (sign1 + sign2 == 0x975f?1:0);                                   /// Проверяем подпись на основе сумме значений
-}
 
 int fs_tempfs_func_updateBoot(const char Disk, TEMPFS_BOOT* boot){
     int write = dpm_write(Disk, 0, sizeof(TEMPFS_BOOT), boot);
@@ -278,6 +389,7 @@ void fs_tempfs_func_cacheUpdate(const char Disk){
 }
 
 size_t fs_tempfs_read(const char Disk, const char* Path, size_t Offset, size_t Size, void* Buffer){
+
 	return 0;
 }
 
@@ -475,14 +587,10 @@ void fs_tempfs_label(const char Disk, char* Label){
 
 int fs_tempfs_detect(const char Disk){
     printf("\n[>] Attempt to check the boot sector\n");
-    TEMPFS_BOOT* boot = fs_tempfs_func_getBootInfo(Disk);
-    if (boot == NULL || fs_tempfs_func_checkSign(boot->Sign1, boot->Sign2) != 1) {
-        printf(" |--- [ERR] TempFS signature did not match OR error reading TempFS boot sector\n");
-        return 0;
-    }
-    fs_tempfs_func_cacheUpdate(Disk);
-    free(boot);
-	return 1;
+    int ret = fs_tempfs_tcache_update(Disk);
+    printf(" |--- [>] ret: 0x%x\n", ret);
+
+	return 0;
 }
 
 void fs_tempfs_format(const char Disk){

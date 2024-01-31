@@ -35,11 +35,13 @@ int main()
     int detect = fs_tempfs_detect('T');
     if (detect == 0){
         printf(" |--- [ERR] Could not verify validity on TempFS\n");
-        fs_tempfs_format('T');
+        //s_tempfs_format('T');
         return 1;
     }
     printf(" |--- [OK] Successful validation of TempFS\n");
 
+
+    /**
     char* label = malloc(32);
     memset(label, 0 , 32);
     fs_tempfs_label('T',label);
@@ -53,6 +55,6 @@ int main()
     int tempwr = fs_tempfs_write('R',"/datafilefs/temp.txt", 0, strlen(TEST_STRING), TEST_STRING);
 
     printf("tempwr: %d\n", tempwr);
-
+    */
     return 0;
 }

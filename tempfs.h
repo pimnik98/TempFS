@@ -49,3 +49,13 @@ typedef struct {
 	char Data[500];					///< Пакет данных
 	uint8_t Rev;					///< Зарезервировано, всегда ноль
 } TEMPFS_PACKAGE;  // Получится 512 байт
+
+typedef struct {
+	uint8_t Status;			    ///< Статус
+	TEMPFS_BOOT* Boot;			///< Ссылка на Boot
+    uint32_t CountFiles;	    ///< Количество файлов
+	TEMPFS_ENTITY* Files;		///< Ссылка на Файловые поинты
+    uint32_t BlocksAll;	        ///< Максимальное количество блоков информации
+    uint32_t FreeAll;           ///< Свободное количество блоков
+    uint32_t EndPoint;          ///< Точка конца диска
+}  TEMPFS_Cache;

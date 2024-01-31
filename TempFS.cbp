@@ -35,6 +35,7 @@
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="emu/disk.h" />
+		<Unit filename="emu/fsm.h" />
 		<Unit filename="ext/my_string.c">
 			<Option compilerVar="CC" />
 		</Unit>

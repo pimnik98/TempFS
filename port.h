@@ -3,6 +3,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdarg.h>
+
+#define tfs_log(M,...); printf(M,##__VA_ARGS__);
 
 typedef enum {
     false = 0,
