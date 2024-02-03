@@ -53,9 +53,9 @@ typedef struct {
 typedef struct {
 	uint8_t Status;			    ///< Статус
 	TEMPFS_BOOT* Boot;			///< Ссылка на Boot
-    uint32_t CountFiles;	    ///< Количество файлов
+    size_t CountFiles;	        ///< Количество файлов
 	TEMPFS_ENTITY* Files;		///< Ссылка на Файловые поинты
-    uint32_t BlocksAll;	        ///< Максимальное количество блоков информации
-    uint32_t FreeAll;           ///< Свободное количество блоков
-    uint32_t EndPoint;          ///< Точка конца диска
+    size_t BlocksAll;	        ///< Максимальное количество блоков информации
+    size_t FreeAll;             ///< Свободное количество блоков
+    size_t EndPoint;            ///< Точка конца диска
 }  TEMPFS_Cache;

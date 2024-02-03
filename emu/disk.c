@@ -5,6 +5,8 @@
 FILE *disk;
 size_t disk_size = 0;
 
+DPM_Disk DPM_Disks[32] = {0};
+
 /**
  * @brief Проверка наличии файла по пути
  *
@@ -102,6 +104,27 @@ size_t dpm_write(char Letter, size_t Offset, size_t Size, void* Buffer){
 
 size_t dpm_get_size(char Letter){
     return disk_size;
+}
+
+void* dpm_metadata_read(char Letter){
+	int Index = Letter - 65;
+
+	Index = (Index > 32 ? Index - 32 : Index);
+	Index = (Index < 0 || Index > 25 ? 0 : Index);
+
+	//if (DPM_Disks[Index].Ready == 0 || DPM_Disks[Index].Status == 0)
+		//return 0;
+
+	return DPM_Disks[Index].Reserved;
+}
+
+void dpm_metadata_write(char Letter, uint32_t Addr){
+	int Index = Letter - 65;
+
+	Index = (Index > 32 ? Index - 32 : Index);
+	Index = (Index < 0 || Index > 25 ? 0 : Index);
+
+	DPM_Disks[Index].Reserved = (void*)Addr;
 }
 
 

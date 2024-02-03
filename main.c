@@ -6,8 +6,8 @@
 void printFiles(){
 
     printf("\n[>] Getting data from the %s folder \n",FOLDER);
-    FSM_DIR* Dir = fs_tempfs_dir('R', FOLDER);
-    if (Dir->Ready == 0){
+    FSM_DIR* Dir = fs_tempfs_dir('T', FOLDER);
+    if (Dir == NULL || Dir->Ready == 0){
         printf(" |--- [ERR] Failed to get folder information\n");
         free(Dir);
         return;
@@ -23,6 +23,8 @@ void printFiles(){
     }
     printf(" |\n |--- Files: %d | Folders: %d | All: %d\n", Dir->CountFiles, Dir->CountDir, Dir->Count);
     printf(" |--- Folder size: %d mb. | %d kb. | %d b.\n", (Sizes != 0?(Sizes/1024/1024):0), (Sizes != 0?(Sizes/1024):0), Sizes);
+
+    free(Dir);
 }
 
 int main()
@@ -35,20 +37,21 @@ int main()
     int detect = fs_tempfs_detect('T');
     if (detect == 0){
         printf(" |--- [ERR] Could not verify validity on TempFS\n");
-        //s_tempfs_format('T');
+        //fs_tempfs_format('T'); ///< Эта строка форматирует диск под разметку TempFS
         return 1;
     }
     printf(" |--- [OK] Successful validation of TempFS\n");
 
 
-    /**
+
     char* label = malloc(32);
     memset(label, 0 , 32);
     fs_tempfs_label('T',label);
 
     printf(" |--- Label: %s\n",label);
-    printFiles();
 
+    printFiles();
+/**
     int create_file = fs_tempfs_create('R',"/datafilefs/temp.txt",0);
     printf("create_file: %d\n", create_file);
 

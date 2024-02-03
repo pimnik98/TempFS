@@ -39,3 +39,43 @@
 1705930097 source:e:\codeblocks\tempfs\ext\pathinfo.c
 	"../port.h"
 
+1706982510 source:d:\_projects\_codeblocks\tempfs\emu\disk.c
+	"../port.h"
+
+1706969754 d:\_projects\_codeblocks\tempfs\port.h
+	<stdio.h>
+	<stdlib.h>
+	<string.h>
+	<stdarg.h>
+	"ext/pathinfo.h"
+	"ext/my_string.h"
+	"emu/disk.h"
+	"emu/fsm.h"
+	"tempfs.h"
+
+1706968129 d:\_projects\_codeblocks\tempfs\ext\pathinfo.h
+	<stdint.h>
+
+1706968129 d:\_projects\_codeblocks\tempfs\ext\my_string.h
+	<stdint.h>
+
+1706982281 d:\_projects\_codeblocks\tempfs\emu\disk.h
+
+1706968129 d:\_projects\_codeblocks\tempfs\emu\fsm.h
+	<stdint.h>
+
+1706969941 d:\_projects\_codeblocks\tempfs\tempfs.h
+	<stdint.h>
+
+1706968129 source:d:\_projects\_codeblocks\tempfs\ext\my_string.c
+	"../port.h"
+
+1706968129 source:d:\_projects\_codeblocks\tempfs\ext\pathinfo.c
+	"../port.h"
+
+1706981979 source:d:\_projects\_codeblocks\tempfs\main.c
+	"port.h"
+
+1706981929 source:d:\_projects\_codeblocks\tempfs\tempfs.c
+	"port.h"
+
