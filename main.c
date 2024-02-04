@@ -18,7 +18,7 @@ void fsminfo(char* Path){
 	char* Buffer = malloc(Buffer);
 	memset(Buffer, 0, file.Size);
 
-	size_t read = fs_tempfs_read('T', Path, 0, file.Size, Buffer);
+	size_t read = fs_tempfs_read('T', Path, 500, 50, Buffer);
 	tfs_log("READ: %d (%d) bytes...\n=====\n%s\n=====\n", read, file.Size, Buffer);
 
 }

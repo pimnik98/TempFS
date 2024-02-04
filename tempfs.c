@@ -381,36 +381,44 @@ void fs_tempfs_func_cacheUpdate(const char Disk){
 }
 
 size_t fs_tempfs_read(const char Disk, const char* Path, size_t Offset, size_t Size, void* Buffer){
-    TEMPFS_ENTITY* ent = fs_tempfs_func_readEntity(Disk,Path);
-    if (ent == NULL || ent->Status != 1){
+    TEMPFS_ENTITY* ent = fs_tempfs_func_readEntity(Disk, Path);
+    if (ent == NULL || ent->Status != 1 || ent->Point == 0){
         return 0;
     }
 
-    char* Buf = malloc(Size);
+    char* Buf = (char*)malloc(Size);
     if (Buf == NULL){
         return 0;
     }
     memset(Buf, 0, Size);
 
+    size_t total_bytes_read = 0;
+
+    // Определяем пакет, с которого необходимо начать чтение на основе смещения
     TEMPFS_PACKAGE* pack = fs_tempfs_func_readPackage(Disk, ent->Point);
-    if (pack == NULL){
-        return 0;
+    while(pack != NULL && Offset > 0){
+        // Пропускаем пакеты, пока смещение не уменьшится до 0
+        size_t bytes_to_skip = (Offset < pack->Length) ? Offset : pack->Length;
+        Offset -= bytes_to_skip;
+        pack = (pack->Next != -1) ? fs_tempfs_func_readPackage(Disk, pack->Next) : NULL;
     }
 
-    if (pack->Status != 2){
-        return 0;
+    // Начинаем считывать данные с учетом смещения и количества
+    while(pack != NULL && total_bytes_read < Size){
+        size_t bytes_to_read = (Size - total_bytes_read < pack->Length) ? (Size - total_bytes_read) : pack->Length;
+        memcpy(&Buf[total_bytes_read], pack->Data, bytes_to_read);
+        total_bytes_read += bytes_to_read;
+
+        pack = (pack->Next != -1) ? fs_tempfs_func_readPackage(Disk, pack->Next) : NULL;
     }
-    size_t seek = 0;
-    while(1){
-        for (int i=0; i < pack->Length; i++){
-			Buf[seek] = pack->Data[i];
-			seek++;
-		}
-		if (pack->Next == -1) break;
-		pack = fs_tempfs_func_readPackage(Disk, pack->Next);
-    }
-    memcpy(Buffer, Buf, seek);
-	return seek;
+
+    // Копируем результат в указанный буфер
+    memcpy(Buffer, Buf, total_bytes_read);
+
+    // Освобождаем буфер
+    free(Buf);
+
+    return total_bytes_read;
 }
 
 size_t fs_tempfs_write(const char Disk, const char* Path, size_t Offset, size_t Size, void* Buffer){
