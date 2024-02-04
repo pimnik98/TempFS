@@ -375,6 +375,41 @@ int fs_tempfs_func_findFILE(const char Disk, const char* Path){
     return 0;                                                               /// Элемент не найден, возвращаем 0
 }
 
+int fs_tempfs_func_clearBlocks(const char Disk, size_t Addr){
+    tfs_log("[!] Starting delete package: 0x%x\n", Addr);
+    if (Addr == 0){
+        tfs_log("[E] ERROR POINT\n");
+        return 1;
+    }
+    TEMPFS_PACKAGE* pkg_free = malloc(sizeof(TEMPFS_PACKAGE));
+    size_t ADRNOW = Addr;
+    while(1){
+        tfs_log(" |---[>] Starting get package: 0x%x\n", ADRNOW);
+        TEMPFS_PACKAGE* pack = fs_tempfs_func_readPackage(Disk, ADRNOW);
+        if (pack == NULL){
+            tfs_log("      |--- NULL\n");
+            free(pkg_free);
+            return 0;
+        }
+        if (pack->Status == TEMPFS_ENTITY_STATUS_PKG_READY){
+            tfs_log("      |--- Delete PKG to Address: 0x%x\n", ADRNOW);
+            fs_tempfs_func_writePackage(Disk, ADRNOW, pkg_free);
+        }
+        if (pack->Next == -1){
+            free(pack);
+            break;
+        }
+        tfs_log("      |--- Next Address: 0x%x\n", pack->Next);
+        ADRNOW = pack->Next;
+        free(pack);
+    }
+
+    //fs_tempfs_func_writePackage(Disk, pkg_addr[i], pkg_free);
+    tfs_log("[+] complete delete package\n");
+    free(pkg_free);
+    return 1;
+}
+
 
 void fs_tempfs_func_cacheUpdate(const char Disk){
     fs_tempfs_tcache_update(Disk);                                  /// Обновляем кэш устройства
@@ -423,106 +458,88 @@ size_t fs_tempfs_read(const char Disk, const char* Path, size_t Offset, size_t S
 
 size_t fs_tempfs_write(const char Disk, const char* Path, size_t Offset, size_t Size, void* Buffer){
     tfs_log("File write...\n");
-    int found = fs_tempfs_func_findFILE(Disk, Path);
-	if (found == 0){
-        tfs_log("File no found.\n");
-		return 0;
-	}
+    TEMPFS_ENTITY* ent = fs_tempfs_func_readEntity(Disk, Path);
+    if (ent == NULL || ent->Status != TEMPFS_ENTITY_STATUS_READY) return 0;
 
-    tfs_log("File nrwxt...\n");
-	size_t src_size = Size;
-	size_t src_seek = 0;
-	size_t currentAddr = 0;
-	size_t read = 0;
-	char src_buf[512] = {0};
-    tfs_log("(%d == 0?1:(%d/500)+1)\n", src_size, src_size);
-	size_t countPack = (src_size == 0?1:(src_size/500)+1);
+    tfs_log("File next...\n");
+    size_t src_size = ent->Size < Size + Offset ? Size + Offset : ent->Size;
 
-    tfs_log("File countPack: %d...\n", countPack);
-	tfs_log("[WriteFile]\n * src_size: %d\n * countPack : %d\n * Buffer: %s\n", src_size, countPack, Buffer);
+    char* PREBUF = malloc(src_size);
+    memset(PREBUF, 0, src_size);
 
-	TEMPFS_PACKAGE* pkg_free = malloc(sizeof(TEMPFS_PACKAGE));
-	uint32_t *pkg_addr = malloc(sizeof(uint32_t)*(countPack+1));
-	// Выделяем память для структур и записи
-	if (pkg_free == NULL || pkg_addr == NULL){
-		tfs_log("KMALLOC ERROR\n");
-		return 0;
-	}
+    size_t fre = fs_tempfs_read(Disk, Path, 0, src_size, PREBUF);
 
-	for (int i = 0; i < countPack; i++) {
+    memcpy(PREBUF + Offset, Buffer, Size);
 
-		pkg_addr[i] = fs_tempfs_func_findFreePackage(Disk,i);
+    tfs_log("PREBUF: \n%s\n", PREBUF);
 
-		if (pkg_addr[i] == -1) {
-			tfs_log("NO FREE PACKAGE!!!\n");
-			return 0;
-		}
+    size_t src_seek = 0;
+    size_t read = 0;
+    char src_buf[500] = {0}; // Буфер для одного пакета
 
-		tfs_log("Found %x FREE PACKAGE!\n", pkg_addr[i]);
-	}
-
-	for (int a = 0; a <= src_size; a++){
-		if (src_seek == 500){
-			// Buffer
-			fs_tempfs_func_fixPackage(src_buf,src_seek);
-
-			tfs_log("Buffer: %s\n",src_buf);
-
-			memcpy((void*) pkg_free->Data, src_buf, 500);
-
-			pkg_free->Length = 500;
-			pkg_free->Next = pkg_addr[currentAddr+1];
-			pkg_free->Status = TEMPFS_ENTITY_STATUS_PKG_READY;
-
-            fs_tempfs_func_writePackage(Disk, pkg_addr[currentAddr], pkg_free);
-            memset(src_buf, 0, 512);
-			currentAddr++;
-			src_seek = 0;
-			a--;
-			//src_buf = {0};
-		} else if (a == (src_size)){
-			fs_tempfs_func_fixPackage(src_buf, src_seek);
-
-			tfs_log("EOL | Buffer: %s\n",src_buf);
-			memcpy((void*) pkg_free->Data, src_buf, 500);
-
-			pkg_free->Length = src_seek;
-			pkg_free->Next = -1;
-			pkg_free->Status = TEMPFS_ENTITY_STATUS_PKG_READY;
-
-            fs_tempfs_func_writePackage(Disk, pkg_addr[currentAddr], pkg_free);
-
-			break;
-		} else {
-			src_buf[src_seek] = *((char *)Buffer + a);
-			src_seek++;
-		}
-	}
-
-	tfs_log("Write complete!\n");
-	tfs_log("[+] Package to write:\n");
-
-	for (int i = 0; i < countPack; i++){
-		tfs_log(" |--- Addr           | %x\n",pkg_addr[i]);
-	}
-
-    size_t indexFile = fs_tempfs_func_getIndexEntity(Disk, Path);
-    TEMPFS_ENTITY* ent = fs_tempfs_func_readEntity(Disk,Path);
-    if (ent == NULL || ent->Status != 1){
-        tfs_log("[WARN] UNKNOWN ENTITY!!!\n");
-    } else {
-        ent->Size = src_size;
-        ent->Point = pkg_addr[0];
-        int went = fs_tempfs_func_writeEntity(Disk, indexFile, ent);
-        free(ent);
-        tfs_log("[>] Write entity (%d) to disk...\n", indexFile);
+    TEMPFS_PACKAGE* pkg_free = malloc(sizeof(TEMPFS_PACKAGE));
+    if (pkg_free == NULL){
+        tfs_log("KMALLOC ERROR\n");
+        return 0;
     }
 
+    // Определяем количество пакетов, которые нужно записать
+    size_t countPack = (src_size / 500) + 1; // Рассчитываем количество пакетов
+
+    // Отчищаем старые блоки, если уже есть точка входа
+    if (fs_tempfs_func_clearBlocks(Disk, ent->Point) == 0) {
+        tfs_log("BLOCK CLEAR ERROR\n");
+        return 0;
+    }
+    uint32_t* pkg_addr = malloc(sizeof(uint32_t) * countPack);
+
+    for (size_t i = 0; i < countPack; i++) {
+        // Находим свободный пакет для записи данных
+        pkg_addr[i] = fs_tempfs_func_findFreePackage(Disk,i);
+        if (pkg_addr[i] == -1) {
+            tfs_log("NO FREE PACKAGE!!!\n");
+            return 0;
+        }
+    }
+
+    for (size_t i = 0; i < countPack; i++) {
+        // Определяем размер данных для записи в текущем пакете
+        size_t bytes_to_write = (src_size - src_seek >= 500) ? 500 : src_size - src_seek;
+
+        // Копируем данные из буфера в текущий пакет
+        memcpy(src_buf, (char*)PREBUF + src_seek, bytes_to_write);
+        src_seek += bytes_to_write;
+
+        // Записываем пакет в файловую систему
+        pkg_free->Length = bytes_to_write;
+        pkg_free->Next = (i < countPack - 1) ? fs_tempfs_func_findFreePackage(Disk, i + 1) : -1;
+        pkg_free->Status = TEMPFS_ENTITY_STATUS_PKG_READY;
+        memcpy(pkg_free->Data, src_buf, 500);
+        fs_tempfs_func_writePackage(Disk, pkg_addr[i], pkg_free);
+
+        // Сбрасываем буфер
+        memset(src_buf, 0, 500);
+    }
+
+    tfs_log("Write complete!\n");
+
+    // После записи данных обновляем информацию о файле
+    size_t indexFile = fs_tempfs_func_getIndexEntity(Disk, Path);
+    ent->Size = src_seek;
+    ent->Point = pkg_addr[0];
+    int went = fs_tempfs_func_writeEntity(Disk, indexFile, ent);
+    free(ent);
+    tfs_log("[>] Write entity (%d) to disk...\n", indexFile);
+
+
+    // Обновляем информацию о загрузочном секторе
     TEMPFS_BOOT* boot = fs_tempfs_func_getBootInfo(Disk);
     if (boot == NULL || fs_tempfs_func_checkSign(boot->Sign1, boot->Sign2) != 1) {
         tfs_log(" |--- [ERR] TempFS signature did not match OR error reading TempFS boot sector\n");
         return 0;
     }
+
+    // Увеличиваем общее количество блоков
     boot->CountBlocks += countPack;
     tfs_log("[>] Boot update data...\n");
     /// Пишем загрузочную
@@ -533,7 +550,7 @@ size_t fs_tempfs_write(const char Disk, const char* Path, size_t Offset, size_t 
     }
     fs_tempfs_func_cacheUpdate(Disk);
 
-	return src_size;
+    return src_seek;
 }
 
 FSM_FILE fs_tempfs_info(const char Disk, const char* Path){

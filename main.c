@@ -79,16 +79,16 @@ int main()
     fsminfo("/datafilefs/");
     fsminfo("/test/");
 
-
+/**
     int create_folder = fs_tempfs_create('T',"/datafilefs/",1);
     printf("create_folder: %d\n", create_folder);
 
     int create_file = fs_tempfs_create('T',"/datafilefs/temp.txt",0);
     printf("create_file: %d\n", create_file);
-/**
-    int tempwr = fs_tempfs_write('T',"/datafilefs/temp.txt", 0, strlen(TEST_STRING), TEST_STRING);
+
+    int tempwr = fs_tempfs_write('T',"/datafilefs/temp.txt", 498, strlen("EllyNet"), "EllyNet");
 
     printf("tempwr: %d\n", tempwr);
-     */
+*/
     return 0;
 }
