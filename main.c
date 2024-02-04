@@ -3,9 +3,7 @@
 #define FOLDER "/disk/"
 
 void fsminfo(char* Path){
-    size_t filesize = 0;
-    int readfile = 0;
-    FSM_FILE file = (FSM_FILE) fs_tempfs_info('T', Path);
+    FSM_FILE file = fs_tempfs_info('T', Path);
     tfs_log(" [>] File  : %s\n",Path);
     tfs_log("  |--- Ready  : %d\n",file.Ready);
 	tfs_log("  |--- Name   : %s\n",file.Name);
@@ -15,7 +13,9 @@ void fsminfo(char* Path){
 	tfs_log("  |--- Type   : %d\n",file.Type);
 	tfs_log("  |--- Date   : %d\n",file.LastTime.year);
 
-	char* Buffer = malloc(Buffer);
+	if (file.Ready != 1) return;
+
+	char* Buffer = malloc(file.Size);
 	memset(Buffer, 0, file.Size);
 
 	size_t read = fs_tempfs_read('T', Path, 500, 50, Buffer);
@@ -74,9 +74,9 @@ int main()
     printFiles();
 
 
-    fs_tempfs_delete('T',"/datafilefs/", 1);
-    fs_tempfs_delete('T',"/datafilefs/temp.txt", 0);
-    fs_tempfs_delete('T',"/datafilefs/", 1);
+    fs_tempfs_delete('T',"/", 1);
+    //fs_tempfs_delete('T',"/datafilefs/temp.txt", 0);
+    //fs_tempfs_delete('T',"/datafilefs/", 1);
 
 
 
