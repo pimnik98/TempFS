@@ -114,6 +114,7 @@ int fs_tempfs_tcache_update(const char Disk){
             inx++;
         }
     }
+    __TCache__->CountFiles = __TCache__->Boot->CountFiles;
     __TCache__->BlocksAll = fs_tempfs_func_getCountAllBlocks(TMF_GETDISKSIZE(Disk));
     __TCache__->FreeAll = (__TCache__->BlocksAll - __TCache__->Boot->CountBlocks - __TCache__->Boot->CountFiles);
     __TCache__->Status = 1;
@@ -158,12 +159,6 @@ int fs_tempfs_func_updateBoot(const char Disk, TEMPFS_BOOT* boot){
 TEMPFS_BOOT* fs_tempfs_func_getBootInfo(const char Disk){
     TEMPFS_Cache* __TCache__ = dpm_metadata_read(Disk);
     if (__TCache__ == 0) return NULL;
-    tfs_log("*** GET BOOT INFO ***\n");
-    tfs_log("*** Disk: %d\n", Disk);
-    tfs_log("*** Point: 0x%x\n", __TCache__->Boot);
-    tfs_log("*** Sign1: 0x%x\n", __TCache__->Boot->Sign1);
-    tfs_log("*** Sign2: 0x%x\n", __TCache__->Boot->Sign2);
-    tfs_log("*** ------------- ***\n");
     return __TCache__->Boot;
 }
 
@@ -279,8 +274,8 @@ int fs_tempfs_func_findFILE(const char Disk, const char* Path){
 
 int fs_tempfs_func_findDIR(const char Disk, const char* Path){
     TEMPFS_Cache* __TCache__ = dpm_metadata_read(Disk);
-    if (__TCache__ == 0) return 0;
-    if (__TCache__->Status != 1 || __TCache__->CountFiles == 0){                /// Получаем данные с кэша
+    if (__TCache__ == 0 || __TCache__->Status != 1 || __TCache__->CountFiles == 0){/// Получаем данные с кэша
+        printf("[>] %d == 0 || %d != 1 || %d == 0", __TCache__, __TCache__->Status, __TCache__->CountFiles);
         return 0;                                                               /// Кэш не готов к работе, возвращаем 0.
     }
     int ret = 0x00;
@@ -520,6 +515,7 @@ int fs_tempfs_create(const char Disk,const char* Path,int Mode){
     } else {                                                                /// Создаем папку
         tfs_log(" |--- Creating a folder\n");
         if ((find_dir & TEMPFS_DIR_INFO_EXITS) || !(find_dir & TEMPFS_DIR_INFO_ROOT)){
+            tfs_log(" |--- %d | %d\n", (find_dir & TEMPFS_DIR_INFO_EXITS), !(find_dir & TEMPFS_DIR_INFO_ROOT));
             free(entity);                                                           /// Освобождение ОЗУ
             return 0;                                                               /// Если родительская папка не существует, или существует основная папка, возвращаеим 0
         }
@@ -578,7 +574,6 @@ void fs_tempfs_label(const char Disk, char* Label){
         return;
     }
 	memcpy(Label,boot->Label,strlen(boot->Label));
-	free(boot);
 }
 
 int fs_tempfs_detect(const char Disk){

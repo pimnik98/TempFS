@@ -51,13 +51,16 @@ int main()
     printf(" |--- Label: %s\n",label);
 
     printFiles();
-/**
-    int create_file = fs_tempfs_create('R',"/datafilefs/temp.txt",0);
+
+    int create_folder = fs_tempfs_create('T',"/datafilefs/",1);
+    printf("create_folder: %d\n", create_folder);
+
+    int create_file = fs_tempfs_create('T',"/datafilefs/temp.txt",0);
     printf("create_file: %d\n", create_file);
 
-    int tempwr = fs_tempfs_write('R',"/datafilefs/temp.txt", 0, strlen(TEST_STRING), TEST_STRING);
+    int tempwr = fs_tempfs_write('T',"/datafilefs/temp.txt", 0, strlen(TEST_STRING), TEST_STRING);
 
     printf("tempwr: %d\n", tempwr);
-    */
+
     return 0;
 }
