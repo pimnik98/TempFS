@@ -161,7 +161,7 @@ size_t fs_tempfs_func_getIndexEntity(const char Disk, char* Path){
         tfs_log(" |     |     |     |--- Size: %d\n", sizeof(TEMPFS_ENTITY));
         offset += sizeof(TEMPFS_ENTITY);                                                    /// Добавляем отступ для следующего поиска
         if (eread != sizeof(TEMPFS_ENTITY)){                                                /// Проверка на кол-во прочитаных байт
-            tfs_log(" |      |    |--- Failed to load enough bytes for data.!\n");
+            tfs_log(" |     |    |--- Failed to load enough bytes for data.!\n");
             break;                                                                              /// Выходим с цикла, так как не удалось загрузить достаточно байт для данных.
         }
         if (tmp.Status != TEMPFS_ENTITY_STATUS_READY){
@@ -178,6 +178,7 @@ size_t fs_tempfs_func_getIndexEntity(const char Disk, char* Path){
             return ginx;
         }
         ginx++;
+        inx++;
     }
     free(dir);
     free(basename);
@@ -344,6 +345,24 @@ int fs_tempfs_func_findDIR(const char Disk, const char* Path){
     }
     free(dir);                                                              /// Освобождение ОЗУ
     return ret;                                                                 /// Элемент не найден, возвращаем 0
+}
+
+size_t fs_tempfs_func_findFilesOnDIR(const char Disk, const char* Path){
+    TEMPFS_Cache* __TCache__ = dpm_metadata_read(Disk);
+    if (__TCache__ == 0 || __TCache__->Status != 1 || __TCache__->CountFiles == 0){
+        return 0;
+    }
+    size_t ret = 0;
+    for(size_t cid = 0; cid < __TCache__->CountFiles; cid++){
+        if (__TCache__->Files[cid].Status != 1){
+            continue;
+        }
+        int is_in = strcmp(__TCache__->Files[cid].Path, Path);
+        if (is_in == 0){
+            ret++;
+        }
+    }
+    return ret;
 }
 
 int fs_tempfs_func_findFILE(const char Disk, const char* Path){
@@ -729,7 +748,64 @@ int fs_tempfs_create(const char Disk,const char* Path,int Mode){
 }
 
 int fs_tempfs_delete(const char Disk,const char* Path,int Mode){
-	return 0;
+    TEMPFS_BOOT* boot = fs_tempfs_func_getBootInfo(Disk);
+    if (boot == NULL || fs_tempfs_func_checkSign(boot->Sign1, boot->Sign2) != 1) {
+        tfs_log(" |--- [ERR] TempFS signature did not match OR error reading TempFS boot sector\n");
+        return 0;
+    }
+
+    size_t indexFile = fs_tempfs_func_getIndexEntity(Disk, Path);
+    if (indexFile == -1){
+        tfs_log("Element %s no found to delete...\n", Path);
+        return 0;
+    }
+    TEMPFS_ENTITY* ent = malloc(sizeof(TEMPFS_ENTITY));
+    if (ent == NULL){
+        tfs_log("No malloc free entity...\n");
+        return 0;
+    }
+    memset(ent, 0, sizeof(TEMPFS_ENTITY));
+    TEMPFS_ENTITY* elem = fs_tempfs_func_readEntity(Disk, Path);
+    if (elem == NULL){
+        free(ent);
+        return 0;
+    }
+    if ((elem->CHMOD & TEMPFS_CHMOD_SYS) || !(elem->CHMOD & TEMPFS_CHMOD_WRITE)){
+        tfs_log("You don't have enough rights to delete this item!\n%s%s",((elem->CHMOD & TEMPFS_CHMOD_SYS)?"Reason: the file is a system file\n":""),(!(elem->CHMOD & TEMPFS_CHMOD_WRITE)?"Reason: no recording rights\n":""));
+        return 0;
+    }
+
+    if (Mode == 0)  {
+        tfs_log(" |--- Delete a file\n");
+        size_t deleteblocks = fs_tempfs_func_clearBlocks(Disk, elem->Point);
+        tfs_log(" |--- Delete blocks: %d\n", deleteblocks);
+        boot->CountBlocks -= deleteblocks;
+    } else {
+        tfs_log(" |--- Delete a folder\n");
+        size_t foundElems = fs_tempfs_func_findFilesOnDIR(Disk, Path);
+        if (foundElems != 0){
+            tfs_log(" |--- To delete a folder, you need to delete %d more items inside it.\n", foundElems);
+            free(ent);
+            free(elem);
+            return 0;
+        }
+    }
+    int wr_entity = fs_tempfs_func_writeEntity(Disk, indexFile, ent);
+    tfs_log(" |--- Delete metadata file (%d)...", indexFile);
+    free(ent);
+    free(elem);
+
+    boot->CountFiles--;
+    /// Пишем загрузочную
+    int boot_write = fs_tempfs_func_updateBoot(Disk, boot);
+    if (boot_write != 1){
+        tfs_log(" |-- [ERR] An error occurred while writing the TempFS boot partition\n");
+        return 0;
+    }
+    tfs_log(" |--- Updating the cache\n");
+
+    fs_tempfs_func_cacheUpdate(Disk);
+	return 1;
 }
 
 void fs_tempfs_label(const char Disk, char* Label){

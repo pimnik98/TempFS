@@ -74,10 +74,15 @@ int main()
     printFiles();
 
 
+    fs_tempfs_delete('T',"/datafilefs/", 1);
+    fs_tempfs_delete('T',"/datafilefs/temp.txt", 0);
+    fs_tempfs_delete('T',"/datafilefs/", 1);
 
-    fsminfo("/datafilefs/temp.txt");
-    fsminfo("/datafilefs/");
-    fsminfo("/test/");
+
+
+    //fsminfo("/datafilefs/temp.txt");
+    //fsminfo("/datafilefs/");
+    //fsminfo("/test/");
 
 /**
     int create_folder = fs_tempfs_create('T',"/datafilefs/",1);
