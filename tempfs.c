@@ -480,8 +480,22 @@ size_t fs_tempfs_write(const char Disk, const char* Path, size_t Offset, size_t 
         int went = fs_tempfs_func_writeEntity(Disk, indexFile, ent);
         free(ent);
         tfs_log("[>] Write entity (%d) to disk...\n", indexFile);
-        fs_tempfs_func_cacheUpdate(Disk);
     }
+
+    TEMPFS_BOOT* boot = fs_tempfs_func_getBootInfo(Disk);
+    if (boot == NULL || fs_tempfs_func_checkSign(boot->Sign1, boot->Sign2) != 1) {
+        tfs_log(" |--- [ERR] TempFS signature did not match OR error reading TempFS boot sector\n");
+        return 0;
+    }
+    boot->CountBlocks += countPack;
+    tfs_log("[>] Boot update data...\n");
+    /// Пишем загрузочную
+    int boot_write = fs_tempfs_func_updateBoot(Disk, boot);
+    if (boot_write != 1){
+        tfs_log(" |-- [ERR] An error occurred while writing the TempFS boot partition\n");
+        return 0;
+    }
+    fs_tempfs_func_cacheUpdate(Disk);
 
 	return src_size;
 }
