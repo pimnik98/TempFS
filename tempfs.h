@@ -59,3 +59,13 @@ typedef struct {
     size_t FreeAll;             ///< Свободное количество блоков
     size_t EndPoint;            ///< Точка конца диска
 }  TEMPFS_Cache;
+
+FSM_FILE fs_tempfs_info(const char Disk, const char* Path);
+FSM_DIR* fs_tempfs_dir(const char Disk, const char* Path);
+int fs_tempfs_create(const char Disk,const char* Path,int Mode);
+int fs_tempfs_delete(const char Disk,const char* Path,int Mode);
+void fs_tempfs_label(const char Disk, char* Label);
+int fs_tempfs_detect(const char Disk);
+void fs_tempfs_format(const char Disk);
+size_t fs_tempfs_write(const char Disk, const char* Path, size_t Offset, size_t Size, void* Buffer);
+size_t fs_tempfs_read(const char Disk, const char* Path, size_t Offset, size_t Size, void* Buffer);

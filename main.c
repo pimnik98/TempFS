@@ -2,6 +2,21 @@
 
 #define FOLDER "/disk/"
 
+void fsminfo(char* Path){
+    size_t filesize = 0;
+    int readfile = 0;
+    FSM_FILE file = (FSM_FILE) fs_tempfs_info('T', Path);
+    tfs_log(" [>] File  : %s\n",Path);
+    tfs_log("  |--- Ready  : %d\n",file.Ready);
+	tfs_log("  |--- Name   : %s\n",file.Name);
+	tfs_log("  |--- Path   : %s\n",file.Path);
+	tfs_log("  |--- Mode   : %d\n",file.Mode);
+	tfs_log("  |--- Size   : %d\n",file.Size);
+	tfs_log("  |--- Type   : %d\n",file.Type);
+	tfs_log("  |--- Date   : %d\n",file.LastTime.year);
+
+}
+
 
 void printFiles(){
 
@@ -37,7 +52,7 @@ int main()
     int detect = fs_tempfs_detect('T');
     if (detect == 0){
         printf(" |--- [ERR] Could not verify validity on TempFS\n");
-        //fs_tempfs_format('T'); ///< Эта строка форматирует диск под разметку TempFS
+        fs_tempfs_format('T'); ///< Эта строка форматирует диск под разметку TempFS
         return 1;
     }
     printf(" |--- [OK] Successful validation of TempFS\n");
@@ -52,15 +67,22 @@ int main()
 
     printFiles();
 
+
+
+    fsminfo("/datafilefs/temp.txt");
+    fsminfo("/datafilefs/");
+    fsminfo("/test/");
+
+
     int create_folder = fs_tempfs_create('T',"/datafilefs/",1);
     printf("create_folder: %d\n", create_folder);
 
     int create_file = fs_tempfs_create('T',"/datafilefs/temp.txt",0);
     printf("create_file: %d\n", create_file);
-
+/**
     int tempwr = fs_tempfs_write('T',"/datafilefs/temp.txt", 0, strlen(TEST_STRING), TEST_STRING);
 
     printf("tempwr: %d\n", tempwr);
-
+     */
     return 0;
 }

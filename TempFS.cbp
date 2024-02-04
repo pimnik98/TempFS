@@ -53,6 +53,15 @@
 		</Unit>
 		<Unit filename="tempfs.h" />
 		<Extensions>
+			<DoxyBlocks>
+				<comment_style block="4" line="2" />
+				<doxyfile_project project_number="1.0" output_language="Russian" />
+				<doxyfile_build />
+				<doxyfile_warnings />
+				<doxyfile_output />
+				<doxyfile_dot />
+				<general />
+			</DoxyBlocks>
 			<lib_finder disable_auto="1" />
 		</Extensions>
 	</Project>
