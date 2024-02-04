@@ -15,6 +15,12 @@ void fsminfo(char* Path){
 	tfs_log("  |--- Type   : %d\n",file.Type);
 	tfs_log("  |--- Date   : %d\n",file.LastTime.year);
 
+	char* Buffer = malloc(Buffer);
+	memset(Buffer, 0, file.Size);
+
+	size_t read = fs_tempfs_read('T', Path, 0, file.Size, Buffer);
+	tfs_log("READ: %d (%d) bytes...\n=====\n%s\n=====\n", read, file.Size, Buffer);
+
 }
 
 
@@ -79,10 +85,10 @@ int main()
 
     int create_file = fs_tempfs_create('T',"/datafilefs/temp.txt",0);
     printf("create_file: %d\n", create_file);
-
+/**
     int tempwr = fs_tempfs_write('T',"/datafilefs/temp.txt", 0, strlen(TEST_STRING), TEST_STRING);
 
-    printf("tempwr: %d\n", tempwr);/**
+    printf("tempwr: %d\n", tempwr);
      */
     return 0;
 }
