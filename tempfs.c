@@ -1,29 +1,16 @@
 #include "port.h"
 
-FSM_DIR* Cache = {0};
-
-// Часть функционала будет переписана для работы именно с этим кэшем
-// Если есть желание поддерживать несколько смонтированных файловых систем
-// Тогда рекомендуется,сделать поддержку это внутри вашей ОС
-// К примеру, в драйвере разделов, есть специальная позиция
-// где можно оставить именно ссылку на этот кэш и после на него ссылаться
-// просто в нужных местах замените переменную __TCache__ на необходимую
-
-
 int fs_tempfs_func_getCountAllBlocks(size_t all_disk){
-    size_t all_free_disk = (all_disk) - (sizeof(TEMPFS_BOOT)) - 1;                      /// Выполняем расчеты всего доступного простраства
-    if (all_free_disk <= 0){                                                            /// Проверка на свободное пространство
-        return 0;                                                                           /// Возвращаем 0, если нет места для блоков
+    size_t all_free_disk = (all_disk) - (sizeof(TEMPFS_BOOT)) - 1;
+    if (all_free_disk <= 0){
+        return 0;
     }
-    size_t all_blocks = (all_free_disk / sizeof(TEMPFS_ENTITY)) - 1;                    /// Получаем количество доступных блоков информации
-    return (all_blocks <= 0?0:all_blocks);                                              /// Возвращает кол-во блоков
+    size_t all_blocks = (all_free_disk / sizeof(TEMPFS_ENTITY)) - 1;
+    return (all_blocks <= 0?0:all_blocks);
 }
 
-/**
- * @brief Функция для проверка подписи
- */
 int fs_tempfs_func_checkSign(uint16_t sign1, uint16_t sign2){
-    return (sign1 + sign2 == 0x975f?1:0);                                   /// Проверяем подпись на основе сумме значений
+    return (sign1 + sign2 == 0x975f?1:0);
 }
 
 void fs_tempfs_func_fixPackage(char* src, int count){
@@ -93,14 +80,14 @@ int fs_tempfs_tcache_update(const char Disk){
             tfs_log(" |     |     |--- [>] Disk read\n");
             tfs_log(" |     |     |     |--- Offset: %d\n", offset);
             tfs_log(" |     |     |     |--- Size: %d\n", sizeof(TEMPFS_ENTITY));
-            offset += sizeof(TEMPFS_ENTITY);                                                    /// Добавляем отступ для следующего поиска
-            if (eread != sizeof(TEMPFS_ENTITY)){                                                /// Проверка на кол-во прочитаных байт
+            offset += sizeof(TEMPFS_ENTITY);
+            if (eread != sizeof(TEMPFS_ENTITY)){
                 tfs_log(" |      |    |--- Failed to load enough bytes for data.!\n");
-                break;                                                                              /// Выходим с цикла, так как не удалось загрузить достаточно байт для данных.
+                break;
             }
             if (__TCache__->Files[inx].Status != TEMPFS_ENTITY_STATUS_READY){
                 tfs_log(" |           |--- No data.!\n");
-                continue;                                                                           /// Пропускаем блок информации, тк тут нет информации
+                continue;
             }
 
             tfs_log(" |     |     |--- [>] File info\n");
@@ -145,8 +132,8 @@ size_t fs_tempfs_func_getIndexEntity(const char Disk, char* Path){
     if (__TCache__ == 0 || __TCache__->Status != 1 || __TCache__->Boot->CountFiles <= 0){
         return -1;
     }
-    char* dir = pathinfo(Path, PATHINFO_DIRNAME);                           /// Создаем данные о родительской папке
-    char* basename = pathinfo(Path, PATHINFO_BASENAME);                     /// Создаем данные о базовом названии
+    char* dir = pathinfo(Path, PATHINFO_DIRNAME);
+    char* basename = pathinfo(Path, PATHINFO_BASENAME);
     size_t offset = 512;
     size_t inx = 0;
     size_t ginx = 0;
@@ -159,18 +146,18 @@ size_t fs_tempfs_func_getIndexEntity(const char Disk, char* Path){
         tfs_log(" |     |     |--- [>] Disk read\n");
         tfs_log(" |     |     |     |--- Offset: %d\n", offset);
         tfs_log(" |     |     |     |--- Size: %d\n", sizeof(TEMPFS_ENTITY));
-        offset += sizeof(TEMPFS_ENTITY);                                                    /// Добавляем отступ для следующего поиска
-        if (eread != sizeof(TEMPFS_ENTITY)){                                                /// Проверка на кол-во прочитаных байт
+        offset += sizeof(TEMPFS_ENTITY);
+        if (eread != sizeof(TEMPFS_ENTITY)){
             tfs_log(" |     |    |--- Failed to load enough bytes for data.!\n");
-            break;                                                                              /// Выходим с цикла, так как не удалось загрузить достаточно байт для данных.
+            break;
         }
         if (tmp.Status != TEMPFS_ENTITY_STATUS_READY){
             tfs_log(" |           |--- No data.!\n");
             ginx++;
-            continue;                                                                           /// Пропускаем блок информации, тк тут нет информации
+            continue;
         }
-        int is_in = strcmp(tmp.Path, dir);                       /// Провяем на совпадении пути
-        int is_file = strcmp(tmp.Name, basename);                /// Провяем на совпадении имени
+        int is_in = strcmp(tmp.Path, dir);
+        int is_file = strcmp(tmp.Name, basename);
 
         if (is_in == 0 && is_file == 0){
             free(dir);
@@ -194,25 +181,25 @@ TEMPFS_ENTITY* fs_tempfs_func_readEntity(const char Disk, char* Path){
         return entity;
     }
 
-    char* dir = pathinfo(Path, PATHINFO_DIRNAME);                           /// Создаем данные о родительской папке
-    char* basename = pathinfo(Path, PATHINFO_BASENAME);                     /// Создаем данные о базовом названии
+    char* dir = pathinfo(Path, PATHINFO_DIRNAME);
+    char* basename = pathinfo(Path, PATHINFO_BASENAME);
     tfs_log("basename: %s | dir: %s\n",basename, dir);
-    for(size_t cid = 0; cid < __TCache__->CountFiles; cid++){                         /// Поиск по циклу
-        if (__TCache__->Files[cid].Status != 1){                                      /// Проверяем сущность на готовность
-            continue;                                                               /// Пропускаем, так как сущность не готова
+    for(size_t cid = 0; cid < __TCache__->CountFiles; cid++){
+        if (__TCache__->Files[cid].Status != 1){
+            continue;
         }
-        int is_in = strcmp(__TCache__->Files[cid].Path, dir);                       /// Провяем на совпадении пути
-        int is_file = strcmp(__TCache__->Files[cid].Name, basename);                /// Провяем на совпадении имени
+        int is_in = strcmp(__TCache__->Files[cid].Path, dir);
+        int is_file = strcmp(__TCache__->Files[cid].Name, basename);
 
         tfs_log(" |- name: %s | path: %s\n",__TCache__->Files[cid].Name, __TCache__->Files[cid].Path);
-        if (is_in == 0 && is_file == 0){                                       /// Проверка выполненых условий
+        if (is_in == 0 && is_file == 0){
             tfs_log("{^^^^ SELECTED}\n");
             memcpy(entity, &__TCache__->Files[cid], sizeof(TEMPFS_ENTITY));
-            return entity;                                                               /// Элемент найден, возвращаем 1
+            return entity;
         }
     }
-    free(dir);                                                              /// Освобождение ОЗУ
-    free(basename);                                                         /// Освобождение ОЗУ
+    free(dir);
+    free(basename);
     return entity;
 }
 
@@ -241,22 +228,22 @@ size_t fs_tempfs_func_getCountAllFreeEntity(const char Disk){
 
 int fs_tempfs_func_findFreePackage(const char Disk, int Skip){
     TEMPFS_Cache* __TCache__ = dpm_metadata_read(Disk);
-    if (__TCache__ == 0 || __TCache__->Status != 1){                                                /// Получаем данные с кэша
-        return -1;                                                               /// Кэш не готов к работе, возвращаем 0.
+    if (__TCache__ == 0 || __TCache__->Status != 1){
+        return -1;
     }
     tfs_log("[>] Find free package...\n");
 
-    TEMPFS_BOOT* boot = fs_tempfs_func_getBootInfo(Disk);                               /// Получаем данные о загрузочном блоке
-    if (boot == NULL || fs_tempfs_func_checkSign(boot->Sign1, boot->Sign2) != 1) {      /// Проверка на NULL, а также проверка подписи
+    TEMPFS_BOOT* boot = fs_tempfs_func_getBootInfo(Disk);
+    if (boot == NULL || fs_tempfs_func_checkSign(boot->Sign1, boot->Sign2) != 1) {
         tfs_log(" |--- [ERR] Signature error\n");
-        return -1;                                                                         /// Проверка не удалась, возвращаем -1
+        return -1;
     }
 
 
-    int allcount = fs_tempfs_func_getCountAllBlocks(boot->EndDisk);                     /// Получаем ОБЩИЕ кол-во блоков
-    if (allcount <= 0){                                                                 /// Если кол-во блоков меньше= нуля
+    int allcount = fs_tempfs_func_getCountAllBlocks(boot->EndDisk);
+    if (allcount <= 0){
         tfs_log(" |--- [ERR] No blocks\n");
-        return -1;                                                                          /// Возвращаем -1
+        return -1;
     }
 
     int adr = 0;
@@ -290,61 +277,61 @@ int fs_tempfs_func_findFreePackage(const char Disk, int Skip){
 int fs_tempfs_func_findFreeInfoBlock(const char Disk){
     TEMPFS_Cache* __TCache__ = dpm_metadata_read(Disk);
     if (__TCache__ == 0) return 0;
-    if (__TCache__->Status != 1){                                                /// Получаем данные с кэша
-        return 0;                                                               /// Кэш не готов к работе, возвращаем 0.
+    if (__TCache__->Status != 1){
+        return 0;
     }
     size_t offset = 512;
     size_t cmx = 0;
-    TEMPFS_ENTITY* tmp = malloc(sizeof(TEMPFS_ENTITY));                         /// Создаем временную сущность
+    TEMPFS_ENTITY* tmp = malloc(sizeof(TEMPFS_ENTITY));
     while(1){
-        memset(tmp, 0, sizeof(TEMPFS_ENTITY));                                      /// Очищаем эту сущность
-        int read = dpm_read(Disk, offset, sizeof(TEMPFS_ENTITY), tmp);              /// Загружаем данные с устройства
-        if (read != sizeof(TEMPFS_ENTITY)) {                                        /// Проверяем количество загруженных байт
+        memset(tmp, 0, sizeof(TEMPFS_ENTITY));
+        int read = dpm_read(Disk, offset, sizeof(TEMPFS_ENTITY), tmp);
+        if (read != sizeof(TEMPFS_ENTITY)) {
             free(tmp);
-            return -1;                                                                  /// Возвращаем -1, так произошла ошибка.
+            return -1;
         }
-        if (tmp->Status == 0 || tmp->Type == 0){                                    /// Выполняем проверки
-            free(tmp);                                                              /// Освобождение ОЗУ
-            return cmx;                                                             /// Возвращаем индекс блока доступного для записи
+        if (tmp->Status == 0 || tmp->Type == 0){
+            free(tmp);
+            return cmx;
         }
-        cmx++;                                                                      /// Увеличиваем счетчик
-        offset += sizeof(TEMPFS_ENTITY);                                            /// Увеличиваем смещение
+        cmx++;
+        offset += sizeof(TEMPFS_ENTITY);
     }
-    free(tmp);                                                                  /// Освобождение ОЗУ
+    free(tmp);
 }
 
 
 int fs_tempfs_func_findDIR(const char Disk, const char* Path){
     TEMPFS_Cache* __TCache__ = dpm_metadata_read(Disk);
-    if (__TCache__ == 0 || __TCache__->Status != 1 || __TCache__->CountFiles == 0){/// Получаем данные с кэша
+    if (__TCache__ == 0 || __TCache__->Status != 1 || __TCache__->CountFiles == 0){
         printf("[>] %d == 0 || %d != 1 || %d == 0", __TCache__, __TCache__->Status, __TCache__->CountFiles);
-        return 0;                                                               /// Кэш не готов к работе, возвращаем 0.
+        return 0;
     }
     int ret = 0x00;
-    char* dir = pathinfo(Path, PATHINFO_DIRNAME);                           /// Создаем данные о родительской папке
-    char* basename = pathinfo(Path, PATHINFO_BASENAME);                     /// Создаем данные о базовом названии
-    for(size_t cid = 0; cid < __TCache__->CountFiles; cid++){                         /// Поиск по циклу
-        if (__TCache__->Files[cid].Status != 1){                                      /// Проверяем сущность на готовность
-            continue;                                                               /// Пропускаем, так как сущность не готова
+    char* dir = pathinfo(Path, PATHINFO_DIRNAME);
+    char* basename = pathinfo(Path, PATHINFO_BASENAME);
+    for(size_t cid = 0; cid < __TCache__->CountFiles; cid++){
+        if (__TCache__->Files[cid].Status != 1){
+            continue;
         }
-        if (__TCache__->Files[cid].Type != 0x02){                                       /// Проверяем сущность на тип папки
-            continue;                                                               /// Пропускаем, так как это не папка
+        if (__TCache__->Files[cid].Type != 0x02){
+            continue;
         }
-        int is_in = strcmp(__TCache__->Files[cid].Path, dir);                        /// Провяем на наличие родительской папки
-        int is_ph = strcmp(__TCache__->Files[cid].Name, basename);                       /// Провяем на наличие самой папки
+        int is_in = strcmp(__TCache__->Files[cid].Path, dir);
+        int is_ph = strcmp(__TCache__->Files[cid].Name, basename);
         if (is_in == 0){
-            ret |= TEMPFS_DIR_INFO_ROOT;                                            /// Ставим флаг, что корневая папка найдена
+            ret |= TEMPFS_DIR_INFO_ROOT;
         }
         if (is_ph == 0){
-            ret |= TEMPFS_DIR_INFO_EXITS;                                           /// Ставим флаг, что основная папка найдена
+            ret |= TEMPFS_DIR_INFO_EXITS;
         }
-        if ((ret & TEMPFS_DIR_INFO_ROOT) && (ret & TEMPFS_DIR_INFO_EXITS)){     /// Проверка выполненых условий
-            free(dir);                                                              /// Освобождение ОЗУ
-            return ret;                                                             /// Элемент найден, возвращаем 1
+        if ((ret & TEMPFS_DIR_INFO_ROOT) && (ret & TEMPFS_DIR_INFO_EXITS)){
+            free(dir);
+            return ret;
         }
     }
-    free(dir);                                                              /// Освобождение ОЗУ
-    return ret;                                                                 /// Элемент не найден, возвращаем 0
+    free(dir);
+    return ret;
 }
 
 size_t fs_tempfs_func_findFilesOnDIR(const char Disk, const char* Path){
@@ -367,31 +354,31 @@ size_t fs_tempfs_func_findFilesOnDIR(const char Disk, const char* Path){
 
 int fs_tempfs_func_findFILE(const char Disk, const char* Path){
     TEMPFS_Cache* __TCache__ = dpm_metadata_read(Disk);
-    if (__TCache__ == 0 || __TCache__->Status != 1 || __TCache__->CountFiles == 0){                /// Получаем данные с кэша
-        return 0;                                                               /// Кэш не готов к работе, возвращаем 0.
+    if (__TCache__ == 0 || __TCache__->Status != 1 || __TCache__->CountFiles == 0){
+        return 0;
     }
 
-    char* dir = pathinfo(Path, PATHINFO_DIRNAME);                           /// Создаем данные о родительской папке
-    char* basename = pathinfo(Path, PATHINFO_BASENAME);                     /// Создаем данные о базовом названии
+    char* dir = pathinfo(Path, PATHINFO_DIRNAME);
+    char* basename = pathinfo(Path, PATHINFO_BASENAME);
     for(size_t cid = 0; cid < __TCache__->CountFiles; cid++){
         if (__TCache__->Files[cid].Status != 1){
-            continue;                                                               /// Пропускаем, так как сущность не готова
+            continue;
         }
         if (__TCache__->Files[cid].Type != 0x01){
-            continue;                                                               /// Пропускаем, так как это не файл
+            continue;
         }
         int is_in = fs_tempfs_func_findDIR(Disk, dir);
-        int is_file = strcmp(__TCache__->Files[cid].Name, basename);                /// Провяем на совпадении имени
-        //int is_in = strcmp(__TCache__->Files[cid].Path, dir);                       /// Провяем на совпадении пути
-        if (is_in == 0x03 && is_file == 0){                                       /// Проверка выполненых условий
-            free(dir);                                                              /// Освобождение ОЗУ
-            free(basename);                                                         /// Освобождение ОЗУ
-            return 1;                                                               /// Элемент найден, возвращаем 1
+        int is_file = strcmp(__TCache__->Files[cid].Name, basename);
+        //int is_in = strcmp(__TCache__->Files[cid].Path, dir);
+        if (is_in == 0x03 && is_file == 0){
+            free(dir);
+            free(basename);
+            return 1;
         }
     }
-    free(dir);                                                              /// Освобождение ОЗУ
-    free(basename);                                                         /// Освобождение ОЗУ
-    return 0;                                                               /// Элемент не найден, возвращаем 0
+    free(dir);
+    free(basename);
+    return 0;
 }
 
 int fs_tempfs_func_clearBlocks(const char Disk, size_t Addr){
@@ -431,7 +418,7 @@ int fs_tempfs_func_clearBlocks(const char Disk, size_t Addr){
 
 
 void fs_tempfs_func_cacheUpdate(const char Disk){
-    fs_tempfs_tcache_update(Disk);                                  /// Обновляем кэш устройства
+    fs_tempfs_tcache_update(Disk);
 }
 
 size_t fs_tempfs_read(const char Disk, const char* Path, size_t Offset, size_t Size, void* Buffer){
@@ -604,53 +591,53 @@ FSM_DIR* fs_tempfs_dir(const char Disk, const char* Path){
         tfs_log(" |--- Error malloc\n");
         return Dir;
     }
-    size_t offset = 512;                                                                /// Óêàçûâàåì îòñòóï, ñ êîòîðîãî íà÷èíàåì ïîèñê
-    size_t count = 0;                                                                   /// Òåêóùèå êîëè÷åñòâî íàéäåíûõ ñóùíîñòåé
-    size_t CF = 0, CD = 0;                                                              /// Òåêóùèå êîëè÷åñòâî íàéäåíûõ (CF-ôàéëîâ|CD-ïàïîê)
+    size_t offset = 512;
+    size_t count = 0;
+    size_t CF = 0, CD = 0;
     size_t CZ = 0;
     tfs_log(" |--- [>] Enter while\n");
-    while(1){                                                                           /// Âõîäèì â öèêë äëÿ ïîèñêà ñóùíîñòåé
-        if (CZ + 1 > boot->CountFiles){                                                  /// Ïðîâåðÿåì íà êîë-âî ïðîâåðåííûõ ñóùíîñòåé
-            break;                                                                              /// Âûõîäèì ñ öèêëà, òàê êàê âñå äàííûå óæå íàéäåíû.
+    while(1){
+        if (CZ + 1 > boot->CountFiles){
+            break;
         }
         tfs_log(" |     |--- [>] %d > %d\n", CZ + 1, boot->CountFiles);
-        TEMPFS_ENTITY* entity = malloc(sizeof(TEMPFS_ENTITY));                              /// Ñîçäàåì ñóùíîñòü
-        if (entity == NULL) {                                                               /// Ïðîâåðÿåì óäàëîñü ëè âûäåëèòü ïàìÿòü, äëÿ äàííîé ñóùíîñòè
-            break;                                                                              /// Âûõîäèì ñ öèêëà, òàê êàê íåò ÎÇÓ
+        TEMPFS_ENTITY* entity = malloc(sizeof(TEMPFS_ENTITY));
+        if (entity == NULL) {
+            break;
         }
-        int eread = dpm_read(Disk, offset, sizeof(TEMPFS_ENTITY), entity);                  /// Çàãðóæàåì äàííûå î ñóùíîñòè ñ äèñêà
+        int eread = dpm_read(Disk, offset, sizeof(TEMPFS_ENTITY), entity);
         tfs_log(" |     |     |--- [>] Disk read\n");
         tfs_log(" |     |     |     |--- Offset: %d\n", offset);
         tfs_log(" |     |     |     |--- Size: %d\n", sizeof(TEMPFS_ENTITY));
-        offset += sizeof(TEMPFS_ENTITY);                                                    /// Äîáàâëÿåì îòñòóï äëÿ ñëåäóþùåãî ïîèñêà
-        if (eread != sizeof(TEMPFS_ENTITY)){                                                /// Ïðîâåðêà íà êîë-âî ïðî÷èòàíûõ áàéò
+        offset += sizeof(TEMPFS_ENTITY);
+        if (eread != sizeof(TEMPFS_ENTITY)){
             tfs_log(" |      |    |--- Failed to load enough bytes for data.!\n");
-            free(entity);                                                                       /// Îñâîáîæäàåì ÎÇÓ îò ñóùíîñòè
-            break;                                                                              /// Âûõîäèì ñ öèêëà, òàê êàê íå óäàëîñü çàãðóçèòü äîñòàòî÷íî áàéò äëÿ äàííûõ.
+            free(entity);
+            break;
         }
-        if (entity->Status == TEMPFS_ENTITY_STATUS_ERROR ||                                 /// Ïðîâåðêà íà ñòàòóñ è òèï ñóùíîñòè
+        if (entity->Status == TEMPFS_ENTITY_STATUS_ERROR ||
             entity->Type   == TEMPFS_ENTITY_TYPE_UNKNOWN){
             tfs_log(" |           |--- No data.!\n");
-            free(entity);                                                                       /// Îñâîáîæäàåì ÎÇÓ îò ñóùíîñòè
-            continue;                                                                           /// Ïðîïóñêàåì áëîê èíôîðìàöèè, òê òóò íåò èíôîðìàöèè
+            free(entity);
+            continue;
         }
         if ((strcmp(entity->Path, "/") == 0 && strcmp(entity->Name, "/") == 0) || strcmp(entity->Path, Path) != 0){
             free(entity);
-            CZ++;                                                                      /// Îñâîáîæäàåì ÎÇÓ îò ñóùíîñòè
+            CZ++;
             continue;
         }
-        Files[count].Ready = 1;                                                             /// Óêàçûâàåì ÷òî ñóùíîñòü åñòü
-        Files[count].CHMOD = entity->CHMOD;                                                 /// Êîïèðóåì íàñòðîéêè CHMOD (RWES)
-        Files[count].Size = entity->Size;                                                   /// Êîïèðóåì ðàçìåð ôàéëà
-        memcpy(Files[count].Name, entity->Name, strlen(entity->Name));                      /// Êîïèðóåì èìÿ ôàéëà
-        memcpy(Files[count].Path, entity->Path, strlen(entity->Path));                      /// Êîïèðóåì èìÿ ïóòè
+        Files[count].Ready = 1;
+        Files[count].CHMOD = entity->CHMOD;
+        Files[count].Size = entity->Size;
+        memcpy(Files[count].Name, entity->Name, strlen(entity->Name));
+        memcpy(Files[count].Path, entity->Path, strlen(entity->Path));
 
-        if (entity->Type == TEMPFS_ENTITY_TYPE_FOLDER){                                     /// Ïðîâåðÿåì ÿâëÿåòñÿ ëè ñóùíîñòü ïàïêîé?
-            CD++;                                                                               /// Óâåëè÷èâàåì ñ÷åò÷èê ïàïîê
-            Files[count].Type = 5;                                                              /// Óêàçûâàåì ÷òî ñóùíîñòü ïàïêà
-        } else {                                                                            /// Åñëè ýòî íå ïàïêà, çíà÷èò ôàéë
-            CF++;                                                                               /// Óâåëè÷èâàåì ñ÷åò÷èê ôàéëîâ
-            Files[count].Type = 0;                                                              /// Óêàçûâàåì ÷òî ýòî ôàéë
+        if (entity->Type == TEMPFS_ENTITY_TYPE_FOLDER){
+            CD++;
+            Files[count].Type = 5;
+        } else {
+            CF++;
+            Files[count].Type = 0;
         }
         tfs_log(" |     |     |--- [>] File info\n");
         tfs_log(" |     |     |     |--- Name: %s\n", Files[count].Name);
@@ -661,14 +648,14 @@ FSM_DIR* fs_tempfs_dir(const char Disk, const char* Path){
         tfs_log(" |     |     |     |--- CHMOD: 0x%x\n", Files[count].CHMOD);
 
         count++;
-        CZ++;                                                                                 /// Óâåëè÷åâàåì ñ÷åò÷èê íàéäåííûõ ñóùíîñòåé
-        free(entity);                                                                       /// Îñâîáîæäàåì ÎÇÓ îò ñóùíîñòè
+        CZ++;
+        free(entity);
         tfs_log(" |     |     |--- Next!\n");
     }
 
-    Dir->Ready = 1;                                                                     /// Ñîîáùàåì ÷òî äàííûå çàãðóæåíû
-	Dir->Count = count;                                                                 /// Çàïèñûâàåì êîë-âî íàéäåíûõ ñóùíîñòåé
-	Dir->CountFiles = CF;                                                               /// Çàïèñûâàåì êîë-âî íàéäåíûõ ôàéëîâ
+    Dir->Ready = 1;
+	Dir->Count = count;
+	Dir->CountFiles = CF;
 	Dir->CountDir = CD;
 	Dir->CountOther = 0;
 	Dir->Files = Files;
@@ -678,54 +665,54 @@ FSM_DIR* fs_tempfs_dir(const char Disk, const char* Path){
 
 int fs_tempfs_create(const char Disk,const char* Path,int Mode){
     tfs_log("[>] Creating a new entity\n");
-    TEMPFS_ENTITY* entity = malloc(sizeof(TEMPFS_ENTITY));                  /// Создаем сущность
+    TEMPFS_ENTITY* entity = malloc(sizeof(TEMPFS_ENTITY));
     memset(entity, 0, sizeof(TEMPFS_ENTITY));
-    int find_dir = fs_tempfs_func_findDIR(Disk, Path);                      /// Ищем родительскую папку
+    int find_dir = fs_tempfs_func_findDIR(Disk, Path);
     tfs_log(" |--- Folder search result: 0x%x\n", find_dir);
-    if (Mode == 0)  {                                                       /// Создаем файл
+    if (Mode == 0)  {
         tfs_log(" |--- Creating a file\n");
 
-        int find_file = fs_tempfs_func_findFILE(Disk, Path);                    /// Ищем такой файл в папке
+        int find_file = fs_tempfs_func_findFILE(Disk, Path);
         tfs_log(" |--- File search result: %d\n", find_file);
-        if (find_file == 1){                                                    /// Проверка условий
-            free(entity);                                                           /// Освобождение ОЗУ
-            return 0;                                                               /// Возвращаем 0, так как такой файл уже существует
+        if (find_file == 1){
+            free(entity);
+            return 0;
         }
         tfs_log(" |--- Filling in metadata\n");
-        char* dir = pathinfo(Path, PATHINFO_DIRNAME);                           /// Создаем данные о родительской папке
-        char* basename = pathinfo(Path, PATHINFO_BASENAME);                     /// Создаем данные о базовом названии
-        memcpy(entity->Name, basename, strlen(basename));                       /// Копируем данные об имени файла
-        memcpy(entity->Path, dir, strlen(dir));                                 /// Копируем данные об пути файла
-        entity->CHMOD |= TEMPFS_CHMOD_READ | TEMPFS_CHMOD_WRITE;                /// Ставим биты, чтения и записи
+        char* dir = pathinfo(Path, PATHINFO_DIRNAME);
+        char* basename = pathinfo(Path, PATHINFO_BASENAME);
+        memcpy(entity->Name, basename, strlen(basename));
+        memcpy(entity->Path, dir, strlen(dir));
+        entity->CHMOD |= TEMPFS_CHMOD_READ | TEMPFS_CHMOD_WRITE;
         // entity->Date = 0;
-        entity->Size = 0;                                                       /// Указываем размер файла
-        entity->Status = TEMPFS_ENTITY_STATUS_READY;                            /// Указываем что файл готов к работе
-        entity->Type = TEMPFS_ENTITY_TYPE_FILE;                                 /// Указываем что это файл
+        entity->Size = 0;
+        entity->Status = TEMPFS_ENTITY_STATUS_READY;
+        entity->Type = TEMPFS_ENTITY_TYPE_FILE;
         tfs_log(" |--- Next step\n");
-    } else {                                                                /// Создаем папку
+    } else {
         tfs_log(" |--- Creating a folder\n");
         tfs_log(" |--- %d | %d\n", (find_dir & TEMPFS_DIR_INFO_EXITS), !(find_dir & TEMPFS_DIR_INFO_ROOT));
         if ((find_dir & TEMPFS_DIR_INFO_EXITS) || !(find_dir & TEMPFS_DIR_INFO_ROOT)){
-            free(entity);                                                           /// Освобождение ОЗУ
-            return 0;                                                               /// Если родительская папка не существует, или существует основная папка, возвращаеим 0
+            free(entity);
+            return 0;
         }
         char* dir = pathinfo(Path, PATHINFO_DIRNAME);
-        char* basename = pathinfo(Path, PATHINFO_BASENAME);                     /// Создаем данные о базовом названии
-        memcpy(entity->Name, basename, strlen(basename));                       /// Копируем данные об имени файла
-        memcpy(entity->Path, dir, strlen(dir));                               /// Копируем данные об пути файла
-        entity->CHMOD |= TEMPFS_CHMOD_READ | TEMPFS_CHMOD_WRITE;                /// Ставим биты, чтения и записи
+        char* basename = pathinfo(Path, PATHINFO_BASENAME);
+        memcpy(entity->Name, basename, strlen(basename));
+        memcpy(entity->Path, dir, strlen(dir));
+        entity->CHMOD |= TEMPFS_CHMOD_READ | TEMPFS_CHMOD_WRITE;
         // entity->Date = 0;
-        entity->Size = 0;                                                       /// Указываем размер файла
-        entity->Status = TEMPFS_ENTITY_STATUS_READY;                            /// Указываем что файл готов к работе
-        entity->Type = TEMPFS_ENTITY_TYPE_FOLDER;                               /// Указываем что это папка
+        entity->Size = 0;
+        entity->Status = TEMPFS_ENTITY_STATUS_READY;
+        entity->Type = TEMPFS_ENTITY_TYPE_FOLDER;
         tfs_log(" |--- Next step\n");
     }
     tfs_log(" |--- Searching for a free block to record an entity\n");
-    int inx = fs_tempfs_func_findFreeInfoBlock(Disk);                       /// Поиск свободного блока
-    if (inx == -1){                                                         /// Проверка условий
+    int inx = fs_tempfs_func_findFreeInfoBlock(Disk);
+    if (inx == -1){
         tfs_log(" |--- Couldn't find a free entity\n");
-        free(entity);                                                           /// Освобождение ОЗУ
-        return 0;                                                               /// Возвращаем 0, так как нет свободного блока
+        free(entity);
+        return 0;
     }
 
 
