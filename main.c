@@ -79,10 +79,10 @@ int main()
 
     int create_file = fs_tempfs_create('T',"/datafilefs/temp.txt",0);
     printf("create_file: %d\n", create_file);
-/**
+
     int tempwr = fs_tempfs_write('T',"/datafilefs/temp.txt", 0, strlen(TEST_STRING), TEST_STRING);
 
-    printf("tempwr: %d\n", tempwr);
+    printf("tempwr: %d\n", tempwr);/**
      */
     return 0;
 }

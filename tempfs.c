@@ -140,6 +140,49 @@ int fs_tempfs_func_writePackage(const char Disk, size_t Address, TEMPFS_PACKAGE*
     return (write == sizeof(TEMPFS_PACKAGE)?1:0);
 }
 
+size_t fs_tempfs_func_getIndexEntity(const char Disk, char* Path){
+    TEMPFS_Cache* __TCache__ = dpm_metadata_read(Disk);
+    if (__TCache__ == 0 || __TCache__->Status != 1 || __TCache__->Boot->CountFiles <= 0){
+        return -1;
+    }
+    char* dir = pathinfo(Path, PATHINFO_DIRNAME);                           /// Создаем данные о родительской папке
+    char* basename = pathinfo(Path, PATHINFO_BASENAME);                     /// Создаем данные о базовом названии
+    size_t offset = 512;
+    size_t inx = 0;
+    size_t ginx = 0;
+    tfs_log(" |--- [>] Enter while\n");
+    while(1){
+        if (inx + 1 > __TCache__->Boot->CountFiles) break;
+        tfs_log(" |     |--- [>] %d | %d\n", inx + 1, __TCache__->Boot->CountFiles);
+        TEMPFS_ENTITY tmp = {0};
+        int eread = dpm_read(Disk, offset, sizeof(TEMPFS_ENTITY), &tmp);
+        tfs_log(" |     |     |--- [>] Disk read\n");
+        tfs_log(" |     |     |     |--- Offset: %d\n", offset);
+        tfs_log(" |     |     |     |--- Size: %d\n", sizeof(TEMPFS_ENTITY));
+        offset += sizeof(TEMPFS_ENTITY);                                                    /// Добавляем отступ для следующего поиска
+        if (eread != sizeof(TEMPFS_ENTITY)){                                                /// Проверка на кол-во прочитаных байт
+            tfs_log(" |      |    |--- Failed to load enough bytes for data.!\n");
+            break;                                                                              /// Выходим с цикла, так как не удалось загрузить достаточно байт для данных.
+        }
+        if (tmp.Status != TEMPFS_ENTITY_STATUS_READY){
+            tfs_log(" |           |--- No data.!\n");
+            ginx++;
+            continue;                                                                           /// Пропускаем блок информации, тк тут нет информации
+        }
+        int is_in = strcmp(tmp.Path, dir);                       /// Провяем на совпадении пути
+        int is_file = strcmp(tmp.Name, basename);                /// Провяем на совпадении имени
+
+        if (is_in == 0 && is_file == 0){
+            free(dir);
+            free(basename);
+            return ginx;
+        }
+        ginx++;
+    }
+    free(dir);
+    free(basename);
+    return -1;
+}
 
 TEMPFS_ENTITY* fs_tempfs_func_readEntity(const char Disk, char* Path){
     TEMPFS_ENTITY* entity = malloc(sizeof(TEMPFS_ENTITY));
@@ -197,8 +240,7 @@ size_t fs_tempfs_func_getCountAllFreeEntity(const char Disk){
 
 int fs_tempfs_func_findFreePackage(const char Disk, int Skip){
     TEMPFS_Cache* __TCache__ = dpm_metadata_read(Disk);
-    if (__TCache__ == 0) return -1;
-    if (__TCache__->Status != 1){                                                /// Получаем данные с кэша
+    if (__TCache__ == 0 || __TCache__->Status != 1){                                                /// Получаем данные с кэша
         return -1;                                                               /// Кэш не готов к работе, возвращаем 0.
     }
     tfs_log("[>] Find free package...\n");
@@ -427,6 +469,20 @@ size_t fs_tempfs_write(const char Disk, const char* Path, size_t Offset, size_t 
 	for (int i = 0; i < countPack; i++){
 		tfs_log(" |--- Addr           | %x\n",pkg_addr[i]);
 	}
+
+    size_t indexFile = fs_tempfs_func_getIndexEntity(Disk, Path);
+    TEMPFS_ENTITY* ent = fs_tempfs_func_readEntity(Disk,Path);
+    if (ent == NULL || ent->Status != 1){
+        tfs_log("[WARN] UNKNOWN ENTITY!!!\n");
+    } else {
+        ent->Size = src_size;
+        ent->Point = pkg_addr[0];
+        int went = fs_tempfs_func_writeEntity(Disk, indexFile, ent);
+        free(ent);
+        tfs_log("[>] Write entity (%d) to disk...\n", indexFile);
+        fs_tempfs_func_cacheUpdate(Disk);
+    }
+
 	return src_size;
 }
 
@@ -442,7 +498,7 @@ FSM_FILE fs_tempfs_info(const char Disk, const char* Path){
     file.Mode = entity->CHMOD;
     file.Ready = 1;
     file.Size = entity->Size;
-    file.Type = 0;
+    file.Type = (entity->Type == TEMPFS_ENTITY_TYPE_FOLDER?5:0);
 
     free(entity);
     return file;
