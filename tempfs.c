@@ -607,12 +607,13 @@ FSM_DIR* fs_tempfs_dir(const char Disk, const char* Path){
     size_t offset = 512;                                                                /// Óêàçûâàåì îòñòóï, ñ êîòîðîãî íà÷èíàåì ïîèñê
     size_t count = 0;                                                                   /// Òåêóùèå êîëè÷åñòâî íàéäåíûõ ñóùíîñòåé
     size_t CF = 0, CD = 0;                                                              /// Òåêóùèå êîëè÷åñòâî íàéäåíûõ (CF-ôàéëîâ|CD-ïàïîê)
+    size_t CZ = 0;
     tfs_log(" |--- [>] Enter while\n");
     while(1){                                                                           /// Âõîäèì â öèêë äëÿ ïîèñêà ñóùíîñòåé
-        if (count + 1 > boot->CountFiles){                                                  /// Ïðîâåðÿåì íà êîë-âî ïðîâåðåííûõ ñóùíîñòåé
+        if (CZ + 1 > boot->CountFiles){                                                  /// Ïðîâåðÿåì íà êîë-âî ïðîâåðåííûõ ñóùíîñòåé
             break;                                                                              /// Âûõîäèì ñ öèêëà, òàê êàê âñå äàííûå óæå íàéäåíû.
         }
-        tfs_log(" |     |--- [>] %d > %d\n", count + 1, boot->CountFiles);
+        tfs_log(" |     |--- [>] %d > %d\n", CZ + 1, boot->CountFiles);
         TEMPFS_ENTITY* entity = malloc(sizeof(TEMPFS_ENTITY));                              /// Ñîçäàåì ñóùíîñòü
         if (entity == NULL) {                                                               /// Ïðîâåðÿåì óäàëîñü ëè âûäåëèòü ïàìÿòü, äëÿ äàííîé ñóùíîñòè
             break;                                                                              /// Âûõîäèì ñ öèêëà, òàê êàê íåò ÎÇÓ
@@ -632,6 +633,11 @@ FSM_DIR* fs_tempfs_dir(const char Disk, const char* Path){
             tfs_log(" |           |--- No data.!\n");
             free(entity);                                                                       /// Îñâîáîæäàåì ÎÇÓ îò ñóùíîñòè
             continue;                                                                           /// Ïðîïóñêàåì áëîê èíôîðìàöèè, òê òóò íåò èíôîðìàöèè
+        }
+        if ((strcmp(entity->Path, "/") == 0 && strcmp(entity->Name, "/") == 0) || strcmp(entity->Path, Path) != 0){
+            free(entity);
+            CZ++;                                                                      /// Îñâîáîæäàåì ÎÇÓ îò ñóùíîñòè
+            continue;
         }
         Files[count].Ready = 1;                                                             /// Óêàçûâàåì ÷òî ñóùíîñòü åñòü
         Files[count].CHMOD = entity->CHMOD;                                                 /// Êîïèðóåì íàñòðîéêè CHMOD (RWES)
@@ -654,7 +660,8 @@ FSM_DIR* fs_tempfs_dir(const char Disk, const char* Path){
         //tfs_log(" |     |     |     |--- Date: %s\n", Files[count].LastTime);
         tfs_log(" |     |     |     |--- CHMOD: 0x%x\n", Files[count].CHMOD);
 
-        count++;                                                                            /// Óâåëè÷åâàåì ñ÷åò÷èê íàéäåííûõ ñóùíîñòåé
+        count++;
+        CZ++;                                                                                 /// Óâåëè÷åâàåì ñ÷åò÷èê íàéäåííûõ ñóùíîñòåé
         free(entity);                                                                       /// Îñâîáîæäàåì ÎÇÓ îò ñóùíîñòè
         tfs_log(" |     |     |--- Next!\n");
     }

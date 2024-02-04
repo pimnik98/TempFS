@@ -1,7 +1,5 @@
 #include "port.h"
 
-#define FOLDER "/disk/"
-
 void fsminfo(char* Path){
     FSM_FILE file = fs_tempfs_info('T', Path);
     tfs_log(" [>] File  : %s\n",Path);
@@ -24,7 +22,7 @@ void fsminfo(char* Path){
 }
 
 
-void printFiles(){
+void printFiles(const char* FOLDER){
 
     printf("\n[>] Getting data from the %s folder \n",FOLDER);
     FSM_DIR* Dir = fs_tempfs_dir('T', FOLDER);
@@ -71,10 +69,11 @@ int main()
 
     printf(" |--- Label: %s\n",label);
 
-    printFiles();
+    printFiles("/");
+    printFiles("/datafilefs/");
 
 
-    fs_tempfs_delete('T',"/", 1);
+    //fs_tempfs_delete('T',"/", 1);
     //fs_tempfs_delete('T',"/datafilefs/temp.txt", 0);
     //fs_tempfs_delete('T',"/datafilefs/", 1);
 
