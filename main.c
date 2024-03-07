@@ -56,7 +56,7 @@ int main()
     int detect = fs_tempfs_detect('T');
     if (detect == 0){
         printf(" |--- [ERR] Could not verify validity on TempFS\n");
-        fs_tempfs_format('T'); ///< Эта строка форматирует диск под разметку TempFS
+        fs_tempfs_format('T'); ///< пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ TempFS
         return 1;
     }
     printf(" |--- [OK] Successful validation of TempFS\n");
