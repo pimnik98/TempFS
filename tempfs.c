@@ -862,7 +862,9 @@ void fs_tempfs_format(const char Disk){
 
     /// Затираем все данные с диска
     for (size_t abx = 0; abx < all_blocks; abx++){
-        tfs_log(" |-- [>] [%d | %d] Clearing the hard drive of old data\n",abx + 1,all_blocks);
+    	if(abx % 16 == 0) {
+	        tfs_log(" |-- [>] [%ld | %ld] Clearing the hard drive of old data\r",abx + 1,all_blocks);
+    	}
         int wr_entity = fs_tempfs_func_writeEntity(Disk, abx, tmp);
         if (wr_entity != 1){
             tfs_log(" |-- [WARN] There was a problem when erasing data on the 0x%x section\n", 512 + (abx * sizeof(TEMPFS_ENTITY)));
